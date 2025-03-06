@@ -22,22 +22,99 @@ GetProductQuery.java
 public class GetProductQuery{}
 ProductPrjection.java
 @Component public class ProductPrjection{
-  @Autowired private ProductRepository repo;
+  @Autowired private ProductQueryRepository repo;
   @QueryHandler public List<ProductDto> handle(GetProductQuery queryProjection){
-    List<Product> products = repo.findAll();// list of entity objects
+    List<ProductQuery> products = repo.findAll();// list of entity objects
 	List<ProductDto> productDtoList =   products.stream().map(product->productDto.builder().price(product.getPrice()).build()).collect(Collectors.toList());
 	
 	return productDtoList;
   }
+  @EventHandler public void on(ProductCreatedEvent event){
+    ProductQuery entityQuery = new ProductQuery();
+	BeansUtils.copyProperties(entityQuery, event);
+	repo.save(entityQuery);//To keep query model up to date
+  }
 }
+@Repository public interface ProductQueryRepository extends JpaRepository<ProductQuery, String>{}
 	
 ProductQueryController.java
-@ReqeustController @RequestMapping("/api/v1/products")
-public class ProductQueryController{
+@RestController @RequestMapping("/api/v1/products")
+public class ProductQueryController
   @Autowired private QueryGateway queryGateway;
   @GetMapping public List<ProductDto> getAllProducts(){
     GetProductQuery queryProduct = new GetProductQuery();
 	List<ProductDto> productDtoList = queryGateway.query(queryProduct, ResponseType.multipleInstancesOf(ProductDto.class).join());
 	return productDtoList;
   }
+---------POST
+ProductDto.java
+@Data @AllArgsConstructor @NoArgsConstructor
+public class ProductDto{
+  private String name; private BigDecimal price; private Integer quantity;
+  private String isSeasonalProduct;//etc more properties of product
 }
+
+CreateProductCommand.java
+@Data @Builder
+public class CreateProductCommand{
+  @TargetAggregateIdentifier private String productId;
+  private String name; private BigDecimal price; private Integer quantity;
+}
+
+ProductCommandController.java
+@RestController @RequestMapping("/api/v1/products"){
+  @Autowired private CommandGateway commandGateway;
+  @PostMapping public String createProduct(@RequestBody ProductDto dto){
+    CreateProductCommand createProductCommand =
+      CreateProductCommand.builder.name(dto.getName()).build();
+	String result = commandGateway.sendAndWait(createProductCommand);
+	retunr result;
+  }
+}
+
+ProductCreatedEvent.java
+@Data @Builder @AllArgsConstructor @NoArgsConstructor
+public class ProductCreatedEvent{
+  private String productId; private String name;
+  private BigDecimal price; private Integer quantity;
+}
+
+ProductAggregate.java
+@Aggregate public class ProductAggregate{
+  @AggregateIdentifier private String productId;
+  private String name; private BigDecimal price; private Integer quantity;
+  
+  public ProductAggregate(){}
+  
+  @CommandHandler public ProductAggregate(CreateProductCommand command){
+    //validate command and event creation, and send event to subscribers
+	ProductCreatedEvent event = ProductCreatedEvent.builder().build();
+	// or BeansUtils.copyProperties(command, event);
+	AggregateLifecycle.apply(event);//event sent to subscribers
+  }
+  @EventSourcingHandler public void on(ProductCreatedEvent event){
+    this.productId = event.productId;//update current state
+	//...
+  }
+}
+
+Product.java
+@Entity @Data public class Product{ @Id private String productId;
+  private String name; private BigDecimal price; private Integer quantity;
+}
+
+@Repository
+public interface ProductRepository extends JpaRepository<Product, String>{}
+
+ProductEventHandler.java
+@Component public class ProductEventHandler{
+  @Autowired private ProductRepository repo;
+  @EventHandler public void on(ProductCreatedEvent event){
+    //DB action for command (only for insert/update/delete operation - command operataions)
+	Product product = new Product();
+	BeansUtils.copyProperties(event, product);
+	repo.save(product);
+  }
+}
+/////////////////
+Annotations - @EventHandler, @EventSourcingHandler, @CommandHandler, @TargetAggregateIdentifier, @Aggregate, @AggregateIdentifier, @QueryHandler
