@@ -118,3 +118,107 @@ ProductEventHandler.java
 }
 /////////////////
 Annotations - @EventHandler, @EventSourcingHandler, @CommandHandler, @TargetAggregateIdentifier, @Aggregate, @AggregateIdentifier, @QueryHandler
+====================================================================================================================================================
+======================
+======================
+====================================================================================================================================================
+This project is a CQRS (Command Query Responsibility Segregation) and Event Sourcing implementation using Axon Framework and Spring Boot. It models an Order Management System where orders can be created, updated, and queried. Here's a breakdown of the project:
+
+Key Concepts in the Project
+CQRS (Command Query Responsibility Segregation):
+
+Commands are used to modify the state of the system (e.g., create an order, add a product).
+Queries are used to fetch data without modifying the state (e.g., get all orders).
+Event Sourcing:
+
+Instead of storing the current state of an entity, the system stores a sequence of events that represent changes to the state over time.
+Events are replayed to reconstruct the current state of an entity.
+Axon Framework:
+
+A framework for building CQRS and Event Sourcing applications.
+Provides support for aggregates, event handlers, command handlers, and query handlers.
+Project Structure
+Command Model:
+
+Defines the commands and aggregates that handle them.
+Example: OrderAggregate handles commands like CreateOrderCommand, AddProductCommand, etc.
+Query Model:
+
+Handles queries and maintains a read model for efficient data retrieval.
+Example: OrderQueryService and InMemoryOrdersEventHandler.
+Events:
+
+Represent changes in the system.
+Example: OrderCreatedEvent, ProductAddedEvent.
+Commands:
+
+Represent actions to modify the system's state.
+Example: CreateOrderCommand, AddProductCommand.
+Controllers:
+
+Expose REST APIs for interacting with the system.
+Example: OrderRestEndPoints.
+Configuration:
+
+Configures Axon components like the TokenStore for MongoDB.
+Example: MongoConfiguration.
+Key Classes
+Aggregate:
+
+OrderAggregate: Represents the state and behavior of an order. Handles commands like CreateOrderCommand and applies events like OrderCreatedEvent.
+Query Model:
+
+Order: Represents the read model of an order.
+OrderQueryService: Handles queries like fetching all orders.
+Event Handlers:
+
+InMemoryOrdersEventHandler: Handles events like OrderCreatedEvent and updates the in-memory read model.
+Commands and Events:
+
+Commands: Define actions like creating an order (CreateOrderCommand) or adding a product (AddProductCommand).
+Events: Represent state changes like OrderCreatedEvent or ProductAddedEvent.
+Workflow
+Command Handling:
+
+A REST API (e.g., /orders) receives a command like CreateOrderCommand.
+The command is sent to the OrderAggregate, which applies an event like OrderCreatedEvent.
+Event Handling:
+
+The event is handled by an event handler (e.g., InMemoryOrdersEventHandler), which updates the read model.
+Query Handling:
+
+A REST API (e.g., /all-orders) fetches data from the read model using a query like FindAllOrderedProductsQuery.
+Technologies Used
+Spring Boot:
+Provides the foundation for building the application.
+Axon Framework:
+Implements CQRS and Event Sourcing.
+MongoDB:
+Used as a token store for Axon (optional, based on the active profile).
+H2 Database:
+Used for testing purposes.
+Lombok:
+Reduces boilerplate code for getters, setters, etc.
+Example Use Case
+Create an Order:
+
+API: POST /orders
+Command: CreateOrderCommand
+Event: OrderCreatedEvent
+Result: A new order is created and stored in the event store.
+Add a Product to the Order:
+
+API: POST /order/{order-id}/product/{product-id}
+Command: AddProductCommand
+Event: ProductAddedEvent
+Result: The product is added to the order.
+Query All Orders:
+
+API: GET /all-orders
+Query: FindAllOrderedProductsQuery
+Result: Returns a list of all orders.
+Key Files
+OrderAggregate: Handles commands and applies events.
+Order: Represents the read model of an order.
+OrderRestEndPoints: Exposes REST APIs.
+InMemoryOrdersEventHandler: Handles events and updates the in-memory read model.
